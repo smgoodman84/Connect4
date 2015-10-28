@@ -1,0 +1,388 @@
+<html>
+<head>
+<style type="text/css">
+body {
+	font-family: courier;
+	color: #00ff00;
+	font-weight: bold;
+	background-color: black;
+	font-size: 10pt;
+}
+
+p {
+	margin: 0.25em;
+}
+
+.board {
+	height: 300px;
+	width: 364px;
+	background-color: #0000aa;
+	padding: 25px;
+	margin-right: 250px;
+	
+	position: absolute;
+	right: 100px;
+	top: 100px;
+	border-radius: 10px;
+}
+
+.col {
+	float: left;
+	width: 50px;
+	height: 300px;
+	border: 1px solid #0000aa;
+}
+
+.boardSection {
+	height: 50px;
+	width: 50px;
+	background-color: #3a84cd;
+}
+
+
+.player::before {
+	content: "";
+	display: block;
+	height: 36px;
+	width: 36px;
+	padding: 6px;
+	padding: 0;
+	position: relative;
+	left: 6px;
+	top: 6px;
+}
+
+.row div {
+}
+
+.empty {
+}
+
+.player::before {
+	border-radius: 18px;
+}
+.player1::before {
+	background-color: #d64e52;
+	border: solid 2px #b03f43;
+}
+
+.player2::before {
+	background-color: #ffff49;
+	border: solid 2px #d9d93f;
+}
+
+</style>
+</head>
+<body id="body">
+</body>
+<script type="text/javascript">
+HTMLElement.prototype.appendFirst=function(childNode){
+    if(this.firstChild)this.insertBefore(childNode,this.firstChild);
+    else this.appendChild(childNode);
+};
+</script>
+
+<script type="text/javascript">
+function clear() {
+	var body = document.getElementById("body");
+	body.innerHTML = "";
+	
+	window.scrollTo(0,document.body.scrollHeight);
+}
+
+function print(message, showprompt) {
+	var body = document.getElementById("body");
+	body.innerHTML = body.innerHTML + "<p>" + message + "</p>";
+	
+	window.scrollTo(0,document.body.scrollHeight);
+}
+
+function assert_equal(a, b) {
+	if (a === b) {
+		print("Pass: " + a + " === " + b);
+		return;
+	}
+	
+	print("Fail: " + a + " !== " + b);
+}
+</script>
+
+<script type="text/javascript">
+function newGame(renderCallback) {
+	var width = 7;
+	var height = 6;
+	var win_length = 4;
+	
+	var current_winner = 0;
+	var current_player = 1;
+	var board = [
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0],
+		[0,0,0,0,0,0]
+		];
+	
+	function getState() {
+		return {
+			board: board,
+			current_player: current_player,
+			current_winner: current_winner
+		}
+	}
+	
+	function render() {
+		if (renderCallback !== undefined) {
+			renderCallback(getState());
+		}
+	}
+	
+	function processMove(x) {
+		for (y=0;y<height;y++) {
+			if (board[x][y] == 0) {
+				board[x][y] = current_player;
+				current_player = 2 - (current_player - 1);
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	function move(x) {		
+		var validMove = true;		
+		if (current_winner === 0) {
+			validMove = processMove(x);
+		}
+		
+		checkWin();
+		render();
+		
+		if (!validMove) {
+			print("Invalid move");
+		}
+	}
+	
+	function checkWin () {
+		current_winner = checkWinner();
+		
+		if (current_winner === 0 && boardFull()) {
+			current_winner = -1;
+		}
+		
+		return current_winner;
+	}
+	
+	function checkLine(xstart, ystart, xstep, ystep) {
+		var runLength = 0;
+		var currentPlayer = board[xstart][ystart];
+		
+		for (x=xstart,y=ystart;x >=0 && y>=0 && x<width && y<height;x+=xstep,y+=ystep) {
+			if (board[x][y] === currentPlayer) {
+				runLength += 1;
+				if (runLength == win_length && currentPlayer !== 0) {
+					return currentPlayer;
+				}
+			} else {
+				runLength = 1;
+				currentPlayer = board[x][y];
+			}
+		}
+		
+		return 0;
+	}
+
+	function boardFull() {
+		for (x=0;x<width;x++) {
+			if (board[x][5] === 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	function checkWinner() {
+		
+		var checkLineParams = [];
+		
+		for (y=0;y<height;y++) {
+			checkLineParams.push([0, y, 1, 0]);
+						
+			if (y < win_length) {
+				checkLineParams.push([0, y, 1, 1]);
+			}
+			
+			if (y > 0 && y <= height - win_length + 1) {
+				checkLineParams.push([width - 1, y, -1, 1]);
+			}
+		}
+		
+		for (x=0;x<width;x++) {
+			checkLineParams.push([x, 0, 0, 1]);
+			
+			if (x > 0 && x <= width - win_length + 1) {
+				checkLineParams.push([x, 0, 1, 1]);
+			}
+			
+			if (x >= win_length - 1) {
+				checkLineParams.push([x, 0, -1, 1]);
+			}
+		}
+		
+		for (paramIndex = 0; paramIndex < checkLineParams.length; paramIndex++) {
+			var winner = checkLine( checkLineParams[paramIndex][0],
+									checkLineParams[paramIndex][1],
+									checkLineParams[paramIndex][2],
+									checkLineParams[paramIndex][3]);
+			if (winner !== 0) {
+				return winner;
+			}
+		}
+		
+		return 0;
+	}
+	
+	return {
+		move: move,
+		start: render,
+		getState: getState
+	};
+}
+</script>
+
+<script type="text/javascript">
+function drawBoard(board) {
+	
+	var boardDiv = document.createElement('div');
+	boardDiv.className = "board";
+
+	board.forEach(function (row, y) {
+
+		var column = document.createElement('div');
+		column.className = "col";
+		boardDiv.appendChild(column);
+		
+		row.forEach(function (value, x) {
+		
+			var boardSection = document.createElement('div');
+			column.appendFirst(boardSection);
+			boardSection.addEventListener("click", createClickHandler(y));
+			
+			switch (value) {
+				case 0:
+					boardSection.className = "boardSection empty";
+					break;
+				case 1:
+					boardSection.className = "boardSection player player1";
+					break;
+				case 2:
+					boardSection.className = "boardSection player player2";
+					break;
+			}
+		});
+	});
+	
+	document.body.appendChild(boardDiv);
+}
+	
+function printBoard(gameState) {
+	var x=0;
+	var y=0;
+	var line = "";
+	
+	var width = gameState.board.length;
+	var height = gameState.board[0].length;
+	
+	function character(player) {
+		switch (player) {
+			case 0: return "&nbsp;";
+			case 1: return "X";
+			case 2: return "0";
+		}
+	}
+	
+	if (gameState.current_winner !== 0) {
+		print("Winner: " + gameState.current_winner);
+	}
+	
+	for (y = height-1; y>=0; y--) {
+		line = "";
+		for (x=0; x<width; x++) {
+			line = line + character(gameState.board[x][y]);
+		}
+		print("|" + line + "|");
+	}
+	print("---------");
+}
+
+function render(gameState) {
+	printBoard(gameState);
+	drawBoard(gameState.board);
+}
+
+function nullRender(gameState) {
+}
+
+function guiRender(gameState) {
+	drawBoard(gameState.board);
+}
+
+function processMove(col) {
+	clear();
+	game.move(col);
+}
+
+function createClickHandler(col) {
+	return function() {
+		processMove(col);
+	}
+}
+
+document.addEventListener('keydown', function(event) {
+	var col = event.keyCode - 49;
+	if (col >= 0 && col <= 6) {
+		processMove(col);
+	}
+});
+
+
+
+function testGame(render, winner, moves) {
+	var game = newGame(render);
+	game.start();
+	moves.forEach(function (move) {
+		game.move(move);
+	});
+	
+	assert_equal(game.getState().current_winner, winner);
+}
+
+var testMode = false;
+if (testMode) {
+	testGame(nullRender, 0,[1]);
+	
+	testGame(nullRender, 0,[1,2,1,2,1,2]);
+	testGame(nullRender, 1,[1,2,1,2,1,2,1]);
+	testGame(nullRender, 0,[6,1,5,1,6,1,5]);
+	testGame(nullRender, 2,[6,1,5,1,6,1,5,1]);
+	
+	testGame(nullRender, 0,[1,5,2,5,3,5]);
+	testGame(nullRender, 1,[1,5,2,5,3,5,4]);
+	testGame(nullRender, 0,[6,1,5,2,6,3,5]);
+	testGame(nullRender, 2,[6,1,5,2,6,3,5,4]);
+	
+	testGame(nullRender, -1,[3,2,3,2,3,2,2,3,3,2,3,2,5,6,5,6,5,6,6,5,5,6,5,6,0,1,0,1,0,1,1,0,0,1,0,1,4,4,4,4,4,4]);
+	
+	testGame(nullRender, 0,[6,5,5,4,4,3,4,3,3,1]);
+	testGame(nullRender, 1,[6,5,5,4,4,3,4,3,3,1,3]);
+	
+	testGame(nullRender, 0,[0,1,1,2,2,3,2,3,3,5]);
+	testGame(nullRender, 1,[0,1,1,2,2,3,2,3,3,5,3]);
+	testGame(guiRender, 2,[6,0,1,1,2,2,3,2,3,3,5,3]);
+} else {
+	var game = newGame(render);
+	game.start();
+}
+</script>
+</html>
